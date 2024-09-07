@@ -6,6 +6,9 @@ on:
             - opened
             - edited
     workflow_dispatch:
+    push:
+      branches:
+          - dev
 
 jobs:
   deploy:
