@@ -11,6 +11,8 @@ on:
     push:
       branches:
           - test
+      paths-ignore:
+          - '.github/workflows/**'
 
 jobs:
   deploy:
