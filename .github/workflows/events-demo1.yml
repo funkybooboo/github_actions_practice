@@ -1,4 +1,4 @@
-name: Deploy Project
+name: Test Project
 
 on:
     pull_request:
@@ -28,9 +28,3 @@ jobs:
 
         - name: Run tests
           run: npm run test
-
-        - name: Build project
-          run: npm run build
-
-        - name: Deploy project
-          run: echo "Deploying ..."
