@@ -2,13 +2,15 @@ name: Test Project
 
 on:
     pull_request:
+        branches:
+          - test
         types:
             - opened
             - edited
     workflow_dispatch:
     push:
       branches:
-          - dev
+          - test
 
 jobs:
   deploy:
