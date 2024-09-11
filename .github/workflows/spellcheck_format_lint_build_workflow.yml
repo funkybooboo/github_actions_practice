@@ -15,14 +15,24 @@ jobs:
     runs-on: ubuntu-latest  # Specifies the operating system for this job
     steps:
       - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+      - name: Cache codespell
+        uses: actions/cache@v4  # Uses actions/cache to cache `codespell` dependencies
+        with:
+          path: ~/.cache/pip  # Path where `pip` caches packages
+          key: ${{ runner.os }}-codespell-${{ hashFiles('**/requirements.txt') }}  # Unique cache key based on OS and `requirements.txt`
+          restore-keys: |
+            ${{ runner.os }}-codespell-  # Fallback key if specific cache is not found
+
       - name: Install codespell
         run: |
-          pip install codespell  # Installs the `codespell` tool to check for typos
+          pip install codespell  # Installs `codespell` tool to check for typos
+
       - name: Run codespell
         run: |
           codespell --ignore-words="todo,fixme,XXX" --ignore-urls --skip="*.git/*,*.md,*.yaml,*.yml" 2> error.log || true
           # Runs `codespell` to check for typos, ignoring specified words, URLs, and file types
           # Redirects errors to `error.log` and allows the command to fail without stopping the workflow
+
       - name: Upload Error Log (if exists)
         if: failure()  # Runs this step only if the previous steps fail
         uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
@@ -37,11 +47,21 @@ jobs:
     needs: check-typos  # This job will only start after `check-typos` completes successfully
     steps:
       - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+
+      - name: Cache Super-Linter
+        uses: actions/cache@v4  # Uses actions/cache to cache Super-Linter dependencies
+        with:
+          path: .super-linter  # Path where Super-Linter stores cache files
+          key: ${{ runner.os }}-super-linter-${{ hashFiles('**/.super-linter.yml') }}  # Unique cache key based on OS and Super-Linter configuration
+          restore-keys: |
+            ${{ runner.os }}-super-linter-  # Fallback key if specific cache is not found
+
       - name: Super-Linter
         uses: super-linter/super-linter@v7  # Uses the Super-Linter action to lint and format code
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Provides the GitHub token for authentication
         continue-on-error: true  # Continues the job even if linting errors occur
+
       - name: Commit and Push Linting Changes
         uses: EndBug/add-and-commit@v9  # Uses the action to commit and push changes
         with:
@@ -52,6 +72,7 @@ jobs:
           push: true  # Pushes the commit to the repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Provides the GitHub token for authentication
+
       - name: Upload Linter Logs (if exists)
         if: failure()  # Runs this step only if the previous steps fail
         uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
@@ -67,14 +88,27 @@ jobs:
     if: success()  # Ensures this job only runs if the previous job (`lint-format`) succeeded
     steps:
       - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+
+      - name: Cache CMake Build
+        uses: actions/cache@v4  # Uses actions/cache to cache CMake and build dependencies
+        with:
+          path: |
+            ~/cmake  # Path to cache CMake installation (if applicable)
+            build/  # Path to cache build artifacts
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}  # Unique cache key based on OS and CMakeLists.txt
+          restore-keys: |
+            ${{ runner.os }}-cmake-  # Fallback key if specific cache is not found
+
       - name: Install CMake
         run: sudo apt-get install -y cmake  # Installs CMake for building the project
+
       - name: Build with g++
         run: |
-          mkdir build  # Creates a build directory
+          mkdir -p build  # Creates a build directory
           cd build  # Changes to the build directory
           cmake .. > build.log 2>&1  # Configures the project with CMake and redirects output to `build.log`
           make >> build.log 2>&1 || true  # Builds the project and appends output to `build.log`, allows the command to fail without stopping the workflow
+
       - name: Upload Build Log (if exists)
         if: failure()  # Runs this step only if the previous steps fail
         uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
@@ -90,16 +124,29 @@ jobs:
     if: success()  # Ensures this job only runs if the previous job (`lint-format`) succeeded
     steps:
       - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+
+      - name: Cache CMake Build
+        uses: actions/cache@v4  # Uses actions/cache to cache CMake and build dependencies
+        with:
+          path: |
+            C:/Program Files/CMake  # Path to cache CMake installation (if applicable)
+            build/  # Path to cache build artifacts
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}  # Unique cache key based on OS and CMakeLists.txt
+          restore-keys: |
+            ${{ runner.os }}-cmake-  # Fallback key if specific cache is not found
+
       - name: Setup MSVC
         run: |
           choco install visualstudio2022-workload-vctools --ignore-checksums
           choco install visualstudio2022-workload-desktop
           # Installs Visual Studio build tools and desktop development workload using Chocolatey
+
       - name: Install CMake and Clang
         run: |
           choco install cmake
           choco install llvm
           # Installs CMake and LLVM tools (including clang-format) using Chocolatey
+
       - name: Build with MSVC
         shell: pwsh  # Specifies PowerShell as the shell to use
         run: |
@@ -107,6 +154,7 @@ jobs:
           msbuild /p:Configuration=Release >> build.log 2>&1 || true
           # Configures and builds the project with MSVC (Visual Studio 2022) using CMake and MSBuild
           # Redirects output and errors to `build.log`, allows the command to fail without stopping the workflow
+
       - name: Upload Build Log (if exists)
         if: failure()  # Runs this step only if the previous steps fail
         uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
