@@ -1,0 +1,115 @@
+name: C++ Spellcheck, Format, Lint, and Build
+
+# Triggers the workflow on push events or pull requests
+on: [push, pull_request]
+
+# Global permissions for the workflow
+permissions:
+  contents: write  # Grants write access to the repository contents (needed for lint-format job)
+  actions: read   # Grants read-only access to actions (including third-party actions)
+
+jobs:
+  # Job to check for typos in the repository
+  check-typos:
+    name: Check for Typos
+    runs-on: ubuntu-latest  # Specifies the operating system for this job
+    steps:
+      - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+      - name: Install codespell
+        run: |
+          pip install codespell  # Installs the `codespell` tool to check for typos
+      - name: Run codespell
+        run: |
+          codespell --ignore-words="todo,fixme,XXX" --ignore-urls --skip="*.git/*,*.md,*.yaml,*.yml" 2> error.log || true
+          # Runs `codespell` to check for typos, ignoring specified words, URLs, and file types
+          # Redirects errors to `error.log` and allows the command to fail without stopping the workflow
+      - name: Upload Error Log (if exists)
+        if: failure()  # Runs this step only if the previous steps fail
+        uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
+        with:
+          name: check-typos-error  # Name of the artifact
+          path: error.log  # Path to the error log file
+
+  # Job to lint and format code using Super-Linter
+  lint-format:
+    name: Lint and Format Code
+    runs-on: ubuntu-latest  # Specifies the operating system for this job
+    needs: check-typos  # This job will only start after `check-typos` completes successfully
+    steps:
+      - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+      - name: Super-Linter
+        uses: super-linter/super-linter@v7  # Uses the Super-Linter action to lint and format code
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Provides the GitHub token for authentication
+        continue-on-error: true  # Continues the job even if linting errors occur
+      - name: Commit and Push Linting Changes
+        uses: EndBug/add-and-commit@v9  # Uses the action to commit and push changes
+        with:
+          add: '.'  # Adds all changes to the commit
+          author_name: 'GitHub Actions'  # Author name for the commit
+          author_email: 'actions@github.com'  # Author email for the commit
+          message: 'Linted and formatted code with Super-Linter [skip ci]'  # Commit message
+          push: true  # Pushes the commit to the repository
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Provides the GitHub token for authentication
+      - name: Upload Linter Logs (if exists)
+        if: failure()  # Runs this step only if the previous steps fail
+        uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
+        with:
+          name: lint-format-error  # Name of the artifact
+          path: .super-linter.log  # Path to the Super-Linter log file
+
+  # Job to build the project on Linux
+  build-linux:
+    name: Build on Linux
+    runs-on: ubuntu-latest  # Specifies the operating system for this job
+    needs: lint-format  # This job will only start after `lint-format` completes successfully
+    if: success()  # Ensures this job only runs if the previous job (`lint-format`) succeeded
+    steps:
+      - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+      - name: Install CMake
+        run: sudo apt-get install -y cmake  # Installs CMake for building the project
+      - name: Build with g++
+        run: |
+          mkdir build  # Creates a build directory
+          cd build  # Changes to the build directory
+          cmake .. > build.log 2>&1  # Configures the project with CMake and redirects output to `build.log`
+          make >> build.log 2>&1 || true  # Builds the project and appends output to `build.log`, allows the command to fail without stopping the workflow
+      - name: Upload Build Log (if exists)
+        if: failure()  # Runs this step only if the previous steps fail
+        uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
+        with:
+          name: build-linux-error  # Name of the artifact
+          path: build.log  # Path to the build log file
+
+  # Job to build the project on Windows
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest  # Specifies the operating system for this job
+    needs: lint-format  # This job will only start after `lint-format` completes successfully
+    if: success()  # Ensures this job only runs if the previous job (`lint-format`) succeeded
+    steps:
+      - uses: actions/checkout@v4  # Checks out the repository so the workflow can access the code
+      - name: Setup MSVC
+        run: |
+          choco install visualstudio2022-workload-vctools --ignore-checksums
+          choco install visualstudio2022-workload-desktop
+          # Installs Visual Studio build tools and desktop development workload using Chocolatey
+      - name: Install CMake and Clang
+        run: |
+          choco install cmake
+          choco install llvm
+          # Installs CMake and LLVM tools (including clang-format) using Chocolatey
+      - name: Build with MSVC
+        shell: pwsh  # Specifies PowerShell as the shell to use
+        run: |
+          cmake -G "Visual Studio 17 2022" -A x64 . > build.log 2>&1
+          msbuild /p:Configuration=Release >> build.log 2>&1 || true
+          # Configures and builds the project with MSVC (Visual Studio 2022) using CMake and MSBuild
+          # Redirects output and errors to `build.log`, allows the command to fail without stopping the workflow
+      - name: Upload Build Log (if exists)
+        if: failure()  # Runs this step only if the previous steps fail
+        uses: actions/upload-artifact@v4  # Uses the action to upload artifacts
+        with:
+          name: build-windows-error  # Name of the artifact
+          path: build.log  # Path to the build log file
