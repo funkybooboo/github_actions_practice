@@ -13,7 +13,7 @@
 | JAVASCRIPT_STANDARD | Pass ✅           |
 | JSCPD               | Fail ❌           |
 | JSON                | Pass ✅           |
-| JSON_PRETTIER       | Pass ✅           |
+| JSON_PRETTIER       | Fail ❌           |
 | MARKDOWN            | Fail ❌           |
 | MARKDOWN_PRETTIER   | Fail ❌           |
 | NATURAL_LANGUAGE    | Fail ❌           |
