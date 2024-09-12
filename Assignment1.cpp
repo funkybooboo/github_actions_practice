@@ -1,6 +1,6 @@
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
-#include <cmath>
 
 /**
  * @brief Calculates the n-th term of an n-bonacci sequence.
@@ -16,8 +16,10 @@
  */
 long nbonacci(const unsigned int series, const unsigned int n)
 {
-    if (series < 2) throw std::invalid_argument("Series has to be at least 2");
-    if (n < series) return 1;
+    if (series < 2)
+        throw std::invalid_argument("Series has to be at least 2");
+    if (n < series)
+        return 1;
     long k = 0;
     for (unsigned int i = 1; i <= series; i++)
     {
@@ -34,7 +36,7 @@ long nbonacci(const unsigned int series, const unsigned int n)
  * @param title The title to be printed before the sequence.
  * @param series What bonacci series to compute on.
  */
-void printSequence(const std::string& title, const unsigned int series)
+void printSequence(const std::string &title, const unsigned int series)
 {
     constexpr unsigned short SEQUENCE_LENGTH = 20;
     std::cout << title << std::endl;
@@ -49,12 +51,13 @@ void printSequence(const std::string& title, const unsigned int series)
  * @brief Computes the ratio of successive terms in an n-bonacci sequence.
  *
  * Estimates the ratio of successive terms in the sequence and prints the result
- * when the ratio converges (i.e., changes by less than 0.000001 between iterations).
+ * when the ratio converges (i.e., changes by less than 0.000001 between
+ * iterations).
  *
  * @param title The title to be printed with the computed ratio.
  * @param series What bonacci series to compute on.
  */
-void computeNbonacciRatio(const std::string& title, const unsigned int series)
+void computeNbonacciRatio(const std::string &title, const unsigned int series)
 {
     double previousEstimate;
     double currentEstimate = 1;
@@ -63,17 +66,19 @@ void computeNbonacciRatio(const std::string& title, const unsigned int series)
     {
         n++;
         previousEstimate = currentEstimate;
-        currentEstimate = static_cast<double>(nbonacci(series, n)) / static_cast<double>(nbonacci(series, n - 1));
-    }
-    while (std::abs(currentEstimate - previousEstimate) >= 0.000001);
-    std::cout << title << " ratio approaches " << currentEstimate << " after " << n << " iterations" << std::endl;
+        currentEstimate = static_cast<double>(nbonacci(series, n)) /
+                          static_cast<double>(nbonacci(series, n - 1));
+    } while (std::abs(currentEstimate - previousEstimate) >= 0.000001);
+    std::cout << title << " ratio approaches " << currentEstimate << " after "
+              << n << " iterations" << std::endl;
 }
 
 /**
- * @brief Main function to demonstrate the n-bonacci sequence calculations and ratios.
+ * @brief Main function to demonstrate the n-bonacci sequence calculations and
+ * ratios.
  *
- * Prints sequences for Fibonacci, Tribonacci, Fourbonacci, and Fivebonacci sequences.
- * Computes and prints the ratio for each sequence.
+ * Prints sequences for Fibonacci, Tribonacci, Fourbonacci, and Fivebonacci
+ * sequences. Computes and prints the ratio for each sequence.
  *
  * @return Exit status of the program.
  */
