@@ -1,0 +1,185 @@
+name: C++ Spellcheck, Format, and Build
+
+# Trigger the workflow on push and pull_request events
+on: [push, pull_request]
+
+permissions:
+  contents: write   # Allow write access to repository contents (for formatting and building)
+  actions: read     # Allow read access to actions
+
+jobs:
+  check-typos:
+    name: Check for Typos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Checkout the code to the runner to be able to access it in subsequent steps
+
+      - name: Cache codespell
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-codespell-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-codespell-
+        # Cache codespell installation to speed up future runs
+        # Uses the hash of requirements.txt to create a unique cache key
+
+      - name: Install codespell
+        run: pip install codespell
+        # Install codespell, a tool for spellchecking code
+
+      - name: Run codespell
+        run: |
+          codespell --ignore-words="todo,fixme,XXX" --ignore-urls --skip="*.git/*,*.md,*.yaml,*.yml" 2> error.log || true
+        # Run codespell to check for typos
+        # Ignores certain words and file types
+        # Redirects errors to error.log and continues even if errors occur
+
+      - name: Upload Error Log (if exists)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-typos-error
+          path: error.log
+        # Upload error log as an artifact if codespell fails
+
+  format:
+    name: Format Code
+    runs-on: ubuntu-latest
+    needs: check-typos
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Checkout the code to be formatted
+
+      - name: Cache clang-format
+        uses: actions/cache@v4
+        with:
+          path: /usr/bin/clang-format
+          key: ${{ runner.os }}-clang-format
+          restore-keys: |
+            ${{ runner.os }}-clang-format
+        # Cache clang-format installation to speed up future runs
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format
+        # Install clang-format, a tool for formatting C++ code
+
+      - name: Run clang-format
+        run: |
+          find . -name "*.cpp" -o -name "*.h" | xargs clang-format -i
+        # Find and format all .cpp and .h files using clang-format
+
+      - name: Check for Format Changes
+        run: |
+          git diff --exit-code || echo "Code formatting changes detected"
+        # Check if there are any changes due to formatting
+        # Output a message if changes are detected
+
+      - name: Commit and Push format Changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: '.'
+          author_name: 'GitHub Actions'
+          author_email: 'actions@github.com'
+          message: 'Linted and formatted code with clang-format [skip ci]'
+          push: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Commit and push any formatting changes back to the repository
+        # Use GitHub Actions credentials for the commit
+
+  build-linux:
+    name: Build on Linux
+    runs-on: ubuntu-latest
+    needs: format
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Checkout the code to build
+
+      - name: Cache CMake Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/cmake
+            build/
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-
+        # Cache CMake build files to speed up future builds
+        # Uses the hash of CMakeLists.txt to create a unique cache key
+
+      - name: Install CMake
+        run: sudo apt-get install -y cmake
+        # Install CMake, a tool for managing build processes
+
+      - name: Build with g++
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. > build.log 2>&1
+          make >> build.log 2>&1 || true
+        # Create a build directory, run CMake to configure the build, and then build the project with make
+        # Redirect output and errors to build.log
+
+      - name: Upload Build Log (if exists)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-linux-error
+          path: build.log
+        # Upload build log as an artifact if the build fails
+
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    needs: format
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Checkout the code to build
+
+      - name: Cache CMake Build
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:/Program Files/CMake
+            build/
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-
+        # Cache CMake build files to speed up future builds
+        # Uses the hash of CMakeLists.txt to create a unique cache key
+
+      - name: Setup MSVC
+        run: |
+          choco install visualstudio2022-workload-vctools --ignore-checksums
+          choco install visualstudio2022-workload-desktop
+        # Install Visual Studio Build Tools using Chocolatey
+
+      - name: Install CMake and Clang
+        run: |
+          choco install cmake
+          choco install llvm
+        # Install CMake and LLVM (including clang) using Chocolatey
+
+      - name: Build with MSVC
+        shell: pwsh
+        run: |
+          cmake -G "Visual Studio 17 2022" -A x64 . > build.log 2>&1
+          msbuild /p:Configuration=Release >> build.log 2>&1 || true
+        # Configure the build with CMake for Visual Studio and build the project with MSBuild
+        # Redirect output and errors to build.log
+
+      - name: Upload Build Log (if exists)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-windows-error
+          path: build.log
+        # Upload build log as an artifact if the build fails
