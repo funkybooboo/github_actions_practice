@@ -89,3 +89,5 @@ dkms.conf
 out
 build
 cmake-build-debug
+github_conf
+super-linter-output
