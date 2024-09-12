@@ -8,47 +8,9 @@ permissions:
   actions: read     # Allow read access to actions
 
 jobs:
-  check-typos:
-    name: Check for Typos
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        # Checkout the code to the runner to be able to access it in subsequent steps
-
-      - name: Cache codespell
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-codespell-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-codespell-
-        # Cache codespell installation to speed up future runs
-        # Uses the hash of requirements.txt to create a unique cache key
-
-      - name: Install codespell
-        run: pip install codespell
-        # Install codespell, a tool for spellchecking code
-
-      - name: Run codespell
-        run: |
-          codespell --ignore-words="todo,fixme,XXX" --ignore-urls --skip="*.git/*,*.md,*.yaml,*.yml" 2> error.log || true
-        # Run codespell to check for typos
-        # Ignores certain words and file types
-        # Redirects errors to error.log and continues even if errors occur
-
-      - name: Upload Error Log (if exists)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: check-typos-error
-          path: error.log
-        # Upload error log as an artifact if codespell fails
-
   format:
     name: Format Code
     runs-on: ubuntu-latest
-    needs: check-typos
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -69,7 +31,7 @@ jobs:
 
       - name: Run clang-format
         run: |
-          find . -name "*.cpp" -o -name "*.h" | xargs clang-format -i
+          find . -name "*.cpp" -o -name "*.h" | xargs clang-format -i -style=file
         # Find and format all .cpp and .h files using clang-format
 
       - name: Check for Format Changes

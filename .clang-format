@@ -1,32 +1,6 @@
-# Use the LLVM coding style as a base.
 BasedOnStyle: LLVM
-
-# Specify the indentation size.
 IndentWidth: 4
-
-# Use spaces for indentation.
+TabWidth: 4
 UseTab: Never
-
-# Ensure code is aligned with the block's opening brace.
 BreakBeforeBraces: Allman
-
-# Place the opening brace on the same line for function definitions.
-BraceWrapping:
-  AfterFunctionBody: false
-  AfterEnum: true
-  AfterStruct: true
-  AfterClass: true
-  AfterControlStatement: true
-
-# Align consecutive assignments for readability.
-AlignAfterOpenBracket: Align
-
-# Keep a maximum line length of 80 characters.
 ColumnLimit: 80
-
-# Allow short function bodies to be on the same line.
-AllowShortFunctionsOnASingleLine: All
-
-# Format the code to be readable and consistently indented.
-IndentCaseLabels: true
-
