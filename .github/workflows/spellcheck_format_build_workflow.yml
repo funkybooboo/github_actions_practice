@@ -104,7 +104,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        # Checkout the code to build
 
       - name: Cache CMake Build
         uses: actions/cache@v4
@@ -115,26 +114,25 @@ jobs:
           key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}
           restore-keys: |
             ${{ runner.os }}-cmake-
-        # Cache CMake build files to speed up future builds
-        # Uses the hash of CMakeLists.txt to create a unique cache key
 
       - name: Setup MSVC
         run: |
-          choco install visualstudio2022-workload-vctools --ignore-checksums
-          choco install visualstudio2022-workload-desktop
-        # Install Visual Studio Build Tools using Chocolatey
-
-      - name: Install CMake and Clang
-        run: |
+          choco install visualstudio2022-buildtools --ignore-checksums
           choco install cmake
           choco install llvm
-        # Install CMake and LLVM (including clang) using Chocolatey
+        # Install Visual Studio Build Tools, CMake, and LLVM (including clang) using Chocolatey
+
+      - name: Install Visual Studio Workloads
+        run: |
+          $vsInstallerPath = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_community.exe"
+          & $vsInstallerPath --quiet --wait --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows10SDK.19041
+        # Install Visual Studio workloads using Visual Studio Installer
 
       - name: Build with MSVC
         shell: pwsh
         run: |
           cmake -G "Visual Studio 17 2022" -A x64 . > build.log 2>&1
-          msbuild /p:Configuration=Release >> build.log 2>&1 || true
+          msbuild /p:Configuration=Release >> build.log 2>&1
         # Configure the build with CMake for Visual Studio and build the project with MSBuild
         # Redirect output and errors to build.log
 
@@ -144,4 +142,3 @@ jobs:
         with:
           name: build-windows-error
           path: build.log
-        # Upload build log as an artifact if the build fails
