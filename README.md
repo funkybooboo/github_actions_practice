@@ -1,4 +1,4 @@
-# Example Repo
+# Github Actions Practice
 
 This is a super simple example repository!
 ## License
